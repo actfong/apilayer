@@ -348,11 +348,11 @@ describe Apilayer::Currency do
     context "both :currencies and :source specified" do
       it "returns exchange-rates for the specified currencies based on a specified source-currency" do
         VCR.use_cassette("currency/timeframe_with_currencies_and_source") do
-          api_resp = Apilayer::Currency.timeframe("2016-01-01", "2016-06-01", 
+          api_resp = Apilayer::Currency.timeframe("2016-01-01", "2016-01-10", 
             :currencies => %w[GBP CHF], :source => "EUR")
           expect(api_resp["timeframe"]).to be true
           expect(api_resp["start_date"]).to eq "2016-01-01"
-          expect(api_resp["end_date"]).to eq "2016-06-01"
+          expect(api_resp["end_date"]).to eq "2016-01-10"
           expect(api_resp["source"]).to eq "EUR"
           expect(api_resp["quotes"]["2016-01-01"].count).to eq 2
           expect(api_resp["quotes"]["2016-01-01"]).to have_key "EURGBP"
@@ -533,6 +533,43 @@ describe Apilayer::Currency do
           )
           Apilayer::Currency.change("2016-01-01", "2016-03-01", :source => "EUR", :currencies => %w[CHF GBP])
         end
+      end
+    end
+  end
+
+  describe :timeframe_to_csv do
+    before(:each) do
+      test_files = Dir.glob "/vagrant/apilayer/spec/test_csvs/*.csv"
+      test_files.each{ |f| File.unlink f }
+      @file = File.join(TEST_CSVS_DIR, "timeframe_with_currencies_and_source.csv")
+    end
+
+    after(:each) do
+      test_files = Dir.glob "/vagrant/apilayer/spec/test_csvs/*.csv"
+      test_files.each{ |f| File.unlink f }      
+    end
+
+    it "writes timeframe based quotes to CSV" do
+      VCR.use_cassette("currency/timeframe_with_currencies_and_source") do
+        CSV.stub(:open).and_return nil
+        expect(Apilayer::Currency).to receive(:timeframe).with("2016-01-01", "2016-01-10", 
+            :currencies => %w[GBP CHF], :source => "EUR")
+
+        Apilayer::Currency.write_timeframe_to_csv(@file, "2016-01-01", "2016-01-10", 
+            :currencies => %w[GBP CHF], :source => "EUR")
+      end
+    end
+
+    it "writes the correct data to CSV" do
+      VCR.use_cassette("currency/timeframe_with_currencies_and_source") do
+
+        Apilayer::Currency.write_timeframe_to_csv(@file, "2016-01-01", "2016-01-10", 
+          :currencies => %w[GBP CHF], :source => "EUR")        
+
+        expect(CSV.readlines(@file)[0]).to eq ["date", "EURGBP", "EURCHF"]
+        expect(CSV.readlines(@file)[1]).to eq ["2016-01-01", "0.73503", "1.087169"]
+        expect(CSV.readlines(@file)[-1]).to eq ["2016-01-10", "0.752118", "1.083801"]
+
       end
     end
   end

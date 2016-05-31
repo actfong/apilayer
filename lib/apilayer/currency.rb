@@ -1,3 +1,4 @@
+require "csv"
 ##
 # Ruby wrapper for currencylayer. See https://currencylayer.com/documentation for more info
 module Apilayer
@@ -125,7 +126,20 @@ module Apilayer
         :end_date => end_date
       }.reject{ |k,v| v.nil? }
       get_and_parse_with_options(CHANGE_SLUG, opts, params)
-    end    
+    end
+
+    ##
+    # Custome method, by providing a filename for csv and the arguments to be forwarded to timeframe,
+    # a CSV will be written with the returned quotes
+    def self.write_timeframe_to_csv(file, start_date, end_date, opts={})
+      resp = timeframe(start_date, end_date, opts)
+      CSV.open(file, "wb") do |csv|
+        csv << ["date"].concat(resp["quotes"].first[1].keys)
+        resp["quotes"].each_pair do |date, quotes |
+          csv << [date].concat(quotes.values)
+        end
+      end
+    end
 
     ## 
     # 

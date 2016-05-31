@@ -11,3 +11,4 @@ VCR.configure do |c|
 end
 
 require 'apilayer'
+TEST_CSVS_DIR = File.expand_path("../test_csvs/", __FILE__)
